@@ -2,7 +2,7 @@
  * @Description: contents
  * @Author: zyc
  * @Date: 2021-11-23 13:26:52
- * @LastEditTime: 2021-11-23 22:36:55
+ * @LastEditTime: 2021-11-25 00:02:27
  */
 
 const mysql = require('mysql');
@@ -15,36 +15,13 @@ const config = {
   database: 'whfang',
 }
 
-const sample = [{
-  code: '104107605718',
-  link: 'https://wh.lianjia.com/ershoufang/104107605718.html',
-  name: '现代城二区 ',
-  desc: '丹水池地铁口 不临街 前后无遮挡 视野好',
-  details: '4室2厅 | 126.45平米 | 南 北 | 精装 | 高楼层(共18层) | 2011年建 | 板塔结合',
-  totalPrice: '280',
-  unitPrice: '22144',
-  district: '江岸',
-  street: '百步亭',
-}, {
-  code: '104107605712',
-  link: 'https://wh.lianjia.com/ershoufang/104107605718.html',
-  name: '现代城二区 ',
-  desc: '丹水池地铁口 不临街 前后无遮挡 视野好',
-  details: '4室2厅 | 126.45平米 | 南 北 | 精装 | 高楼层(共18层) | 2011年建 | 板塔结合',
-  totalPrice: '280',
-  unitPrice: '22144',
-  district: '江岸',
-  street: '百步亭',
-}]
-
 const connection = mysql.createConnection(config);
 connection.connect();
-
 
 exports.insertHouses = (houses) => {
   return new Promise((resolve, reject) => {
     try {
-      const sql = 'insert into wh_2021(code, district, street, community, title, salePrice, unitPrice, details, link)'
+      const sql = 'insert into wh_house_2021(code, district, street, community, title, salePrice, unitPrice, details, link)'
       
       let values = '';
       for (const house of houses) {
@@ -64,12 +41,12 @@ exports.insertHouses = (houses) => {
   })
 }
 
-exports.insertCommunities = commnunities => {
+exports.insertCommunities = communities => {
   return new Promise((resolve, reject) => {
-    const sql = 'INSERT INTO wh_community_2021(code, district, street, name, unitPrice, count, buildYear, soldInfo, rentInfo, link)'
+    const sql = 'INSERT INTO wh_community_2021(code, district, street, name, unitPrice, saleCount, buildYear, soldInfo, rentInfo, link)'
 
     let values = '';
-    for (let community of commnunities) {
+    for (let community of communities) {
       const { code, district, street, name, unitPrice, count, buildYear, soldInfo, rentInfo, link } = community;
       values += `,("${code}", "${district}", "${street}", "${name}", "${unitPrice}", "${count}", "${buildYear}", "${soldInfo}", "${rentInfo}", "${link}")`
     }
@@ -81,28 +58,71 @@ exports.insertCommunities = commnunities => {
   })
 }
 
+// 清空表格
 exports.emptyTable = tableName => {
   return new Promise((resolve, reject) => {
-    try {
-      const connection = mysql.createConnection(config);
-      connection.connect()
-
-      const sql = `truncate ${tableName}`;
-      
-      connection.query(sql, (error, results, fields) => {
-        if (error) throw error;
-
-        console.log(`清空表 ${tableName} 中所有数据`);
-      });
-
-      connection.end();
+    connection.query(`truncate ${tableName}`, (error, results, fields) => {
+      if (error) throw error;
+      console.log(`清空表 ${tableName} 中所有数据`);
       resolve();
-    } catch (err) {
-      reject();
-    }
+    });
   })
+}
+
+const getItemsByStreet = (table, street_name) => {
+  return new Promise((resolve, reject) => {
+    connection.query(`select * from ${table} where street = "${street_name}"`, (err, data) => {
+      if (err) reject(err);
+
+      // console.log(data[0]);
+      resolve(data);
+    })
+  })
+}
+
+exports.getCommunitiesByStreet = street_name => {
+  return getItemsByStreet('wh_community_2021', street_name);
+}
+
+exports.getHousesByStreet = street_name => {
+  return getItemsByStreet('wh_house_2021', street_name);
+}
+
+/**
+ * @param {} table 表名
+ * @param {*} id 需要更新的数据 id
+ * @param {*} info 确保键名与数据库中的字段名一致
+ */
+const updateById = (table, id, info) => {
+  return new Promise((resolve, reject) => {
+    // 拼接 sql 语句
+    let values = '';
+    for (let [key, value] of Object.entries(info)) {
+      values += `,${key} = "${value}"`
+    }
+
+    connection.query(`UPDATE ${table} SET ${values.slice(1)} WHERE id = ${id}`, (err, data) => {
+      if (err) reject(err);
+      resolve();
+    })
+  })
+}
+
+/**
+ * 为小区增加信息
+ * @param {*} community 给定的小区
+ * @param {*} details 获取的详情信息
+ * @returns 
+ */
+exports.updateDetailsForCommunity = (community, details) => {
+  return updateById('wh_community_2021', community.id, details);
+}
+
+exports.updateDetailsForHouse = (house, details) => {
+  return updateById('wh_house_2021', house.id, details);
 }
 
 // TEST
 // exports.insertHouses(sample);
 // exports.emptyTable('wh_2021');
+// exports.getCommunitiesByStreet('百步亭');

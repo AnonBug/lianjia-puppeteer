@@ -2,17 +2,16 @@
  * @Description: contents
  * @Author: zyc
  * @Date: 2021-11-23 13:15:16
- * @LastEditTime: 2021-11-24 12:35:05
+ * @LastEditTime: 2021-11-25 00:24:49
  */
 
-const { initWindow, getStreetLinks, getItemsFromStreet } = require('./src/puppeteer.js');
-const { emptyTable } = require('./src/mysql');
+const { initWindow, getStreetLinks, getItemsFromStreet, getCommunityDetails, getDetailsFromHouse, getTotalPage, getHousesFromOnePage, getCommunitiesFromOnePage, getHouseDetails } = require('./src/puppeteer.js');
+const { insertHouses, insertCommunities, emptyTable, getCommunitiesByStreet, updateDetailsForCommunity, getHousesByStreet, updateDetailsForHouse } = require('./src/mysql');
 
-const ershoufang = 'https://wh.lianjia.com/ershoufang/';
-const xiaoqu = 'https://wh.lianjia.com/xiaoqu/';
-let flag = false;
+const HOUSE = 'https://wh.lianjia.com/ershoufang/';
+const COMMUNITY = 'https://wh.lianjia.com/xiaoqu/';
 
-const getHouses = async () => {
+const getItems = async (homepage, pupFn, sqlFn, startStreet) => {
   // 启动浏览器
   const { page, browser } = await initWindow();
 
@@ -20,61 +19,94 @@ const getHouses = async () => {
   // await emptyTable('wh_2021');
   
   // 获取街道链接
-  const streetLinks = await getStreetLinks(page, ershoufang);
+  const streetLinks = await getStreetLinks(page, homepage);
   console.log(streetLinks.length);
 
-  // return;
+  let flag = !startStreet;
 
   // 从单个街道链接中获取房屋信息
-  for (let street of streetLinks) {
-    if (false) {
-      if (street.district !== "江汉" || street.name !== "杨汊湖") {
-        continue;
-      }
-
+  for (const street of streetLinks) {
+    // 跳过已爬取的部分
+    if (!flag) {
+      if (street.district !== startStreet) continue;
       flag = true;
     }
-    // 获取房屋信息
-    await getItemsFromStreet(page, street, 'house');
 
-    // TEST
-    // break;
+    const totalPage = await getTotalPage(page, street);
+    for (let i = 1; i <= totalPage; i++) {
+      const curItems = await pupFn(page, street, i);
+      console.log(curItems.length);
+
+      // 插入数据库
+      // sqlFn(curItems);
+      break;
+    }
+    break;
   }
 
   console.log('任务结束');
   browser.close();
 }
 
-const getCommunities = async () => {
-  // 启动浏览器
-  const { page, browser } = await initWindow();
+const getHouses = () => {
+  return getItems(HOUSE, getHousesFromOnePage, insertHouses);
+}
 
-  // 清空数据表(测试用)
-  // await emptyTable('wh_2021');
-  
-  // 获取街道链接
-  const streetLinks = await getStreetLinks(page, xiaoqu);
-  console.log(streetLinks.length);
+const getCommunities = () => {
+  return getItems(COMMUNITY, getCommunitiesFromOnePage, insertCommunities);
+}
 
-  // 从单个街道链接中获取房屋信息
-  for (let street of streetLinks) {
-    if (false) {
-      if (street.district !== "江汉" || street.name !== "杨汊湖") {
+/**
+ * 
+ * @param {*} getSql 获取待更新项函数
+ * @param {*} updateSql 更新函数
+ * @param {*} pupFn 爬虫函数
+ * @param {*} checkProp 校验该项是否完成
+ */
+const fillItems = async (homepage, getSql, updateSql, pupFn, checkProp) => {
+  const {page, browser} = await initWindow(true);
+
+  const streets = await getStreetLinks(page, homepage);
+  // 按街道遍历
+  for (const street of streets) {
+    console.log(`正在更新 ${street.name} 街道`);
+    const items = await getSql(street.name);
+    console.log(`共有 ${items.length} 个待更新项`);
+
+    // 遍历小区
+    for (const item of items) {
+      if (item[checkProp]) continue;
+
+      try {
+        const details = await pupFn(page, item);
+        // console.log(details);
+        await updateSql(item, details);
+        console.log(`记录 ${item.name} 更新成功`);
+      } catch(err) {
+        console.error(`记录 ${item.name} 更新出错`);
+        console.log(err);
         continue;
       }
-
-      flag = true;
+      // break;
     }
-    // 获取房屋信息
-    await getItemsFromStreet(page, street, 'community');
 
-    // TEST
+    console.log(`街道 ${street.name} 更新成功`);
     // break;
   }
 
-  console.log("任务结束");
+  console.log("任务完成");
   browser.close();
 }
 
+const fillCommunities = () => {
+  return fillItems(COMMUNITY, getCommunitiesByStreet, updateDetailsForCommunity, getCommunityDetails, "longitude");
+}
+
+const fillHouses = () => {
+  return fillItems(HOUSE, getHousesByStreet, updateDetailsForHouse, getHouseDetails, "houseUsage");
+}
+
+fillCommunities();
+// fillHouses();
 // getHouses();
-getCommunities();
+// getCommunities();
