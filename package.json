@@ -1,0 +1,12 @@
+{
+  "name": "real-estate-price",
+  "version": "0.0.1",
+  "description": "爬取链家网站的房价信息",
+  "main": "index.js",
+  "author": "anon_bug",
+  "license": "MIT",
+  "dependencies": {
+    "mysql": "^2.18.1",
+    "puppeteer": "^11.0.0"
+  }
+}
