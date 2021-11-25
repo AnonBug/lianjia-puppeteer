@@ -2,7 +2,7 @@
  * @Description: contents
  * @Author: zyc
  * @Date: 2021-11-23 13:23:08
- * @LastEditTime: 2021-11-25 00:01:19
+ * @LastEditTime: 2021-11-25 08:51:32
  */
 
 const puppeteer = require('puppeteer');
@@ -101,17 +101,21 @@ exports.getTotalPage = (page, street) => {
 
 const getItemsFromOnePage = (page, street, cur, selector, domFn) => {
   return new Promise(async (resolve, reject) => {
-    await page.goto(`${street.link}pg${cur}/`);
-
-    // 从当前页获取信息
-    const curPageItems = await page.$$eval(selector, domFn);
-    // 添加行政区和街道信息
-    curPageItems.forEach(item => {
-      item.district = street.district;
-      item.street = street.name;
-    });
-
-    resolve(curPageItems);
+    try {
+      await page.goto(`${street.link}pg${cur}/`);
+  
+      // 从当前页获取信息
+      const curPageItems = await page.$$eval(selector, domFn);
+      // 添加行政区和街道信息
+      curPageItems.forEach(item => {
+        item.district = street.district;
+        item.street = street.name;
+      });
+  
+      resolve(curPageItems);
+    } catch (err) {
+      reject(err);
+    }
   })
 }
 
@@ -125,10 +129,14 @@ exports.getCommunitiesFromOnePage = (page, street, cur) => {
 
 const getDetails = (page, link, domFn) => {
   return new Promise(async (resolve, reject) => {
-    await page.goto(link);
-    const details = page.$eval('body', domFn);
-
-    resolve(details);
+    try {
+      await page.goto(link);
+      const details = page.$eval('body', domFn);
+  
+      resolve(details);
+    } catch (err) {
+      reject(err);
+    }
   })
 }
 

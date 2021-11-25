@@ -2,7 +2,7 @@
  * @Description: contents
  * @Author: zyc
  * @Date: 2021-11-23 13:26:48
- * @LastEditTime: 2021-11-24 23:43:20
+ * @LastEditTime: 2021-11-25 15:43:30
  */
 
 exports.domLinks = eles => eles.map(ele => ({
@@ -86,8 +86,21 @@ exports.domCommunityDetails = body => {
   lis = Array.from(lis).map(ele => ele.innerText.replaceAll(`"`, ''));
   const [, buildType, propertyFee, propertyManager, developer, buildingCount, houseCount] = lis;
 
-  const latlng = body.querySelector('.actshowMap').getAttribute('xiaoqu')
-  const [longitude, latitude] = JSON.parse(latlng);
+  let longitude, latitude;
+
+  let latlng = body.querySelector('.actshowMap');
+  if (latlng) {
+    [longitude, latitude] = JSON.parse(latlng.getAttribute('xiaoqu'));
+  } else {
+    let scripts = body.querySelectorAll('script[type="text/javascript"]');
+    for (let script of scripts) {
+      const res = script.innerText.match(/resblockPosition:'(\S*)',/)
+      if (res) {
+        [longitude, latitude] = res[0].split(':')[1].split(',');
+        break;
+      }
+    }
+  }
 
   return { address, buildType, propertyFee, propertyManager, developer, buildingCount, houseCount, longitude, latitude }
 }
