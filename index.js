@@ -2,7 +2,7 @@
  * @Description: contents
  * @Author: zyc
  * @Date: 2021-11-23 13:15:16
- * @LastEditTime: 2021-11-25 19:51:11
+ * @LastEditTime: 2021-11-27 17:55:15
  */
 
 const {
@@ -148,12 +148,12 @@ const fillHouses = () => {
   return fillItems(HOUSE, getHousesByStreet, updateDetailsForHouse, getHouseDetails, "houseUsage");
 }
 
-(async () => {
-  await fillCommunities();
-  await fillHouses();
-  console.log("任务完成！")
-})()
+// (async () => {
+//   await fillCommunities();
+//   await fillHouses();
+//   console.log("任务完成！")
+// })()
 // fillCommunities();
-// fillHouses();
+fillHouses();
 // getHouses();
 // getCommunities();
